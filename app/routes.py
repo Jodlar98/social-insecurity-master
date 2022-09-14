@@ -1,10 +1,36 @@
-from flask import render_template, flash, redirect, url_for, request
+from pickle import FALSE, TRUE
+from flask import render_template, flash, redirect, url_for, request, session
 from app import app, query_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
 import os
+import re
+import hashlib
 
 # this file contains all the different routes, and the logic for communicating with the database
+
+
+
+#----------------------------------
+# Lagt in funksjon for sjekking av
+# passordstyrke,
+# og om bruker eksisterer i
+# database 14.09.2022 Simon.
+#----------------------------------
+def check_password(pw):
+    if re.fullmatch(r'[A-Za-z0-9@#$%^&+=!/()"¤?¨^]{8,}', pw):
+        return TRUE
+    else:
+        return FALSE
+def check_user(usr):
+    usr = query_db('SELECT * FROM Users WHERE username="{}";'.format(usr), one=True)
+    if usr == None:
+        return TRUE
+    else:
+        return FALSE
+#---------------------------------
+
+
 
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
@@ -15,17 +41,40 @@ def index():
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:
-            flash('Sorry, this user does not exist!')
+            flash('Sorry, wrong password or username!')
         elif user['password'] == form.login.password.data:
             return redirect(url_for('stream', username=form.login.username.data))
         else:
-            flash('Sorry, wrong password!')
+            flash('Sorry, wrong password or username!')
 
     elif form.register.is_submitted() and form.register.submit.data:
-        query_db('INSERT INTO Users (username, first_name, last_name, password) VALUES("{}", "{}", "{}", "{}");'.format(form.register.username.data, form.register.first_name.data,
-         form.register.last_name.data, form.register.password.data))
-        return redirect(url_for('index'))
+
+
+
+#------------------------
+# Lagt til ekstra sjekk 
+# for registrering av 
+# bruker 14.09.2022 Simon 
+# (og Matias).
+#----------------------------------------------------------------
+        if check_password(form.register.password.data) == TRUE and check_user(form.register.username.data) == TRUE:
+            if form.register.confirm_password.data == form.register.password.data:
+                query_db('INSERT INTO Users (username, first_name, last_name, password) VALUES("{}", "{}", "{}", "{}");'.format(form.register.username.data, form.register.first_name.data,
+                form.register.last_name.data, form.register.password.data))
+                return redirect(url_for('index'))
+
+        elif(check_password(form.register.password.data) == FALSE):
+            flash('Sorry, insufficient password.')
+
+        elif(check_user(form.register.username.data) == FALSE):
+            flash('Username already exists.')
+
+        if(form.register.confirm_password.data != form.register.password.data):
+            flash('Passwords are not equal.')
+
     return render_template('index.html', title='Welcome', form=form)
+#----------------------------------------------------------------
+
 
 
 # content stream page
