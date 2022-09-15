@@ -34,6 +34,7 @@ def index():
 
 # content stream page
 @app.route('/stream/<username>', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
 def stream(username):
     form = PostForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
@@ -51,6 +52,7 @@ def stream(username):
 
 # comment page for a given post and user.
 @app.route('/comments/<username>/<int:p_id>', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
 def comments(username, p_id):
     form = CommentsForm()
     if form.is_submitted():
@@ -63,6 +65,7 @@ def comments(username, p_id):
 
 # page for seeing and adding friends
 @app.route('/friends/<username>', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
 def friends(username):
     form = FriendsForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
@@ -78,6 +81,7 @@ def friends(username):
 
 # see and edit detailed profile information of a user
 @app.route('/profile/<username>', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
 def profile(username):
     form = ProfileForm()
     if form.is_submitted():
