@@ -3,12 +3,16 @@ from app import app, query_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
 import os
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
+limiter = Limiter(app, key_func=get_remote_address)
 # this file contains all the different routes, and the logic for communicating with the database
 
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
+@limiter.limit("100/hour", error_message='Stopp, ikkje hack!')
 def index():
     form = IndexForm()
 
