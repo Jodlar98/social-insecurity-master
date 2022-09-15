@@ -5,7 +5,6 @@ from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsFor
 from datetime import datetime
 import os
 import re
-import hashlib
 from passlib.hash import argon2
 # this file contains all the different routes, and the logic for communicating with the database
 
