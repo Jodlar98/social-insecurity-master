@@ -8,6 +8,19 @@ import re
 from passlib.hash import argon2
 # this file contains all the different routes, and the logic for communicating with the database
 
+#========================================
+# NB: For å kjøre siden med HTTPS
+# Må du kjøre denne koden i terminalen:
+#
+# 'flask run --cert=adhoc'
+#
+# Dersom du bruker chrome Kjør koden under
+# i URL-feltet og trykk "tillat":
+#
+# 'chrome://flags/#allow-insecure-localhost'
+#
+#
+#========================================
 
 #----------------------------------
 # Lagt in funksjon for sjekking av
