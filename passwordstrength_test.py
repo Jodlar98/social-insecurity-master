@@ -1,3 +1,6 @@
+# Kode hentet fra:
+# https://www.tutorialspoint.com/strong-password-checker-in-python
+
 class Solution(object):
 
     def strongPasswordChecker(self, s):
