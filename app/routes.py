@@ -9,7 +9,6 @@ from passlib.hash import argon2
 # this file contains all the different routes, and the logic for communicating with the database
 
 
-
 #----------------------------------
 # Lagt in funksjon for sjekking av
 # passordstyrke,
