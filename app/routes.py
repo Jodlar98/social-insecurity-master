@@ -1,4 +1,5 @@
 from pickle import FALSE, TRUE
+from turtle import st
 from flask import render_template, flash, redirect, url_for, request, session
 from app import app, query_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
@@ -6,6 +7,8 @@ from datetime import datetime
 import os
 import re
 from passlib.hash import argon2
+from functions import pwcheck
+
 # this file contains all the different routes, and the logic for communicating with the database
 
 #========================================
@@ -28,11 +31,8 @@ from passlib.hash import argon2
 # og om bruker eksisterer i
 # database 14.09.2022 Simon.
 #----------------------------------
-def check_password(pw):
-    if re.fullmatch(r'[A-Za-z0-9@#$%^&+=!/()"¤?¨^]{8,}', pw):
-        return TRUE
-    else:
-        return FALSE
+
+
 def check_user(usr):
     usr = query_db('SELECT * FROM Users WHERE username="{}";'.format(usr), one=True)
     if usr == None:
@@ -72,14 +72,14 @@ def index():
 #
 # Bruker argon2 kryptering av passord (Matias)
 #----------------------------------------------------------------
-        if check_password(form.register.password.data) == TRUE and check_user(form.register.username.data) == TRUE:
+        if pwcheck(form.register.password.data) == 0 and check_user(form.register.username.data) == TRUE:
             if form.register.confirm_password.data == form.register.password.data:
                 query_db('INSERT INTO Users (username, first_name, last_name, password) VALUES("{}", "{}", "{}", "{}");'.format(form.register.username.data, form.register.first_name.data,
                 form.register.last_name.data, argon2.hash(form.register.password.data)))
                 return redirect(url_for('index'))
 
-        elif(check_password(form.register.password.data) == FALSE):
-            flash('Sorry, insufficient password.')
+        elif(pwcheck(form.register.password.data) != 0):
+            flash('Password must be at least 6 characters long and contain Uppercase letter, a number or a special character')
 
         elif(check_user(form.register.username.data) == FALSE):
             flash('Username already exists.')
