@@ -1,13 +1,15 @@
 from pickle import FALSE, TRUE
 from turtle import st
 from flask import render_template, flash, redirect, url_for, request, session
-from app import app, query_db
+from app import app, query_db, get_db, database
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
+from app.funcs_n_classes import check_user, pwcheck
 import os
 import re
 from passlib.hash import argon2
-
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_sqlalchemy import SQLAlchemy
 
 # this file contains all the different routes, and the logic for communicating with the database
 
@@ -21,55 +23,41 @@ from passlib.hash import argon2
 # i URL-feltet og trykk "tillat":
 #
 # 'chrome://flags/#allow-insecure-localhost'
-#
-# 
-#
 #========================================
 
-#----------------------------------
-# Lagt in funksjon for sjekking av
-# passordstyrke,
-# og om bruker eksisterer i
-# database 14.09.2022 Simon.
-#----------------------------------
-def pwcheck(s):
-    missing_type = 3
-    if any('a' <= c <= 'z' for c in s): missing_type -= 1
-    if any('A' <= c <= 'Z' for c in s): missing_type -= 1
-    if any(c.isdigit() for c in s): missing_type -= 1
-    change = 0
-    one = two = 0
-    p = 2
-    while p < len(s):
-        if s[p] == s[p-1] == s[p-2]:
-            length = 2
-            while p < len(s) and s[p] == s[p-1]:
-                length += 1
-                p += 1
-            change += length / 3
-            if length % 3 == 0: one += 1
-            elif length % 3 == 1: two += 1
-        else:
-            p += 1
-    if len(s) < 6:
-        return max(missing_type, 6 - len(s))
-    elif len(s) <= 20:
-        return max(missing_type, change)
-    else:
-        delete = len(s) - 20
-        change -= min(delete, one)
-        change -= min(max(delete - one, 0), two * 2) / 2
-        change -= max(delete - one - 2 * two, 0) / 3
-        return delete + max(missing_type, change)
+#class User(UserMixin):
 
-def check_user(usr):
-    usr = query_db('SELECT * FROM Users WHERE username="{}";'.format(usr), one=True)
-    if usr == None:
-        return TRUE
-    else:
-        return FALSE
-#---------------------------------
+    #def __init__(self):
+        #form = IndexForm()
+        #db = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
+        #self.username = db['username']
+        #self.id = db['id']
+        #self.password = db['password']
+        #self.name = db['first_name']
+        #self.last_name = db['last_name']
+        #self.authenticated = False
 
+    #def is_authenticated(self):
+        #return self.authenticated
+
+    #def is_active(self):
+        #return self.is_active()
+
+    #def is_anonymous(self):
+        #return False
+
+    #def is_active(self):
+        #return True
+
+    #def get_id(self):
+        #if self.id != None:
+            #return self.id
+        #else:
+            #return None
+
+@app.login_manager.user_loader
+def load_user(user_id):
+    return User.get_id
 
 
 # home page/login/registration
@@ -78,13 +66,15 @@ def check_user(usr):
 def index():
     form = IndexForm()
     print("test outside")
-
+    flash(User.get_id)
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:
             flash('Sorry, wrong password or username!')
         elif argon2.verify(form.login.password.data, user['password']): # Returnerer true hvis user input kan "dekryptere" hashet passord. 
+            login_user(user)
             return redirect(url_for('stream', username=form.login.username.data))
+
         else:
 
             flash('Sorry, wrong password or username!')
@@ -123,6 +113,7 @@ def index():
 
 # content stream page
 @app.route('/stream/<username>', methods=['GET', 'POST'])
+#@login_required
 def stream(username):
     form = PostForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
@@ -177,3 +168,13 @@ def profile(username):
     
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
+
+#--------------------------------
+# Funksjon dersom en går til en
+# ikke-eksisterende route.
+#--------------------------------
+@app.errorhandler(404)
+def page_not_found(e):
+    return redirect(url_for('index'))
+    
+    

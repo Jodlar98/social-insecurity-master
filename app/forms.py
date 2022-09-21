@@ -5,8 +5,6 @@ from wtforms.fields.html5 import DateField
 from wtforms.validators import DataRequired #Importert funksjon for validering 14.09.2022 -Simon
 from flask import Flask, render_template
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = "1!K81HKrP*VcYC4E7uUu"
 
 # defines all forms in the application, these will be instantiated by the template,
 # and the routes.py will read the values of the fields
