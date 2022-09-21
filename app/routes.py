@@ -77,16 +77,15 @@ def check_user(usr):
 @app.route('/index', methods=['GET', 'POST'])
 def index():
     form = IndexForm()
-    print("test outside")
-
+    
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:
             flash('Sorry, wrong password or username!')
         elif argon2.verify(form.login.password.data, user['password']): # Returnerer true hvis user input kan "dekryptere" hashet passord. 
+            
             return redirect(url_for('stream', username=form.login.username.data))
         else:
-
             flash('Sorry, wrong password or username!')
 
     elif form.register.is_submitted() and form.register.submit.data:
@@ -108,6 +107,8 @@ def index():
                 return redirect(url_for('index'))
 
         elif(pwcheck(form.register.password.data) != 0):
+            test = query_db('SELECT * FROM Users WHERE id="{1}";'.format(test), one=True)
+            flash(test)
             flash('Password must be at least 6 characters long and contain Uppercase letter, a number or a special character')
 
         elif(check_user(form.register.username.data) == FALSE):
