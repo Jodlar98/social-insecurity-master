@@ -1,13 +1,45 @@
 from flask import render_template, flash, redirect, url_for, request
-from app import app, query_db
+from app import app, query_db, db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
 import os
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin
 
 limiter = Limiter(app, key_func=get_remote_address)
 # this file contains all the different routes, and the logic for communicating with the database
+
+# User class
+class User():
+    id = query_db('SELECT * FROM Users WHERE username="{}";'.format(db.login.username.data), one=True)
+
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return self.is_active
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        try:
+            return str(self.id)
+        except AttributeError:
+            raise NotImplementedError("No `id` attribute - override `get_id`") from None
+
+###
+
+login = LoginManager()
+login.init_app(app)
+
+@login.user_loader
+def load_user(user_id):
+    return query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id.id.data), one=True)
 
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
@@ -15,12 +47,17 @@ limiter = Limiter(app, key_func=get_remote_address)
 @limiter.limit("100/hour", error_message='Stopp, ikkje hack!')
 def index():
     form = IndexForm()
-
+    #login_form = LoginForm()
+    #register_form = RegisterForm()
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:
             flash('Sorry, this user does not exist!')
         elif user['password'] == form.login.password.data:
+            print(user)
+            user = User()
+            login_user(user)
+            print(user)
             return redirect(url_for('stream', username=form.login.username.data))
         else:
             flash('Sorry, wrong password!')
