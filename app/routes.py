@@ -1,23 +1,73 @@
+import imp
+from numbers import Real
 from flask import render_template, flash, redirect, url_for, request
 from app import app, query_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
 import os
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
+from app import login
+limiter = Limiter(app, key_func=get_remote_address)
+
 
 # this file contains all the different routes, and the logic for communicating with the database
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'} # Might use this at some point, probably don't want people to upload any file type
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# User class
+class User(UserMixin):
+    def __init__(self, id, username) -> None:
+        self.id = id
+        self.username = username
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return self.is_active
+
+    @property
+    def is_anonymous(self):
+        return False
+
+    def get_id(self):
+        try:
+            return str(self.id)
+        except AttributeError:
+            raise NotImplementedError("No `id` attribute - override `get_id`") from None
+
+###
+
+
+
+login = LoginManager()
+login.init_app(app)
+
+@login.user_loader
+def load_user(user_id):
+    user =  query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id), one=True)
+    if user is None:
+        return None
+    else:
+        return User(user_id, user[1])
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
+@limiter.limit("100/hour", error_message='Stopp, ikkje hack!')
 def index():
     form = IndexForm()
-
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:
             flash('Sorry, this user does not exist!')
         elif user['password'] == form.login.password.data:
-            return redirect(url_for('stream', username=form.login.username.data))
+            usr = load_user(user["id"])
+            login_user(usr, remember=form.login.remember_me.data)
+            return redirect(url_for('stream'))
         else:
             flash('Sorry, wrong password!')
 
@@ -29,25 +79,32 @@ def index():
 
 
 # content stream page
-@app.route('/stream/<username>', methods=['GET', 'POST'])
-def stream(username):
+@app.route('/stream', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
+@login_required
+def stream():
+    username = current_user.username
     form = PostForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
-        if form.image.data:
+        if allowed_file(form.image.data.filename):
             path = os.path.join(app.config['UPLOAD_PATH'], form.image.data.filename)
             form.image.data.save(path)
-
-
-        query_db('INSERT INTO Posts (u_id, content, image, creation_time) VALUES({}, "{}", "{}", \'{}\');'.format(user['id'], form.content.data, form.image.data.filename, datetime.now()))
-        return redirect(url_for('stream', username=username))
-
+            query_db('INSERT INTO Posts (u_id, content, image, creation_time) VALUES({}, "{}", "{}", \'{}\');'.format(user['id'], form.content.data, form.image.data.filename, datetime.now()))
+            return redirect(url_for('stream', username=username))
+        else:
+            
+            flash('This file format is not accepted, png, jpg and jpeg is gooood')
     posts = query_db('SELECT p.*, u.*, (SELECT COUNT(*) FROM Comments WHERE p_id=p.id) AS cc FROM Posts AS p JOIN Users AS u ON u.id=p.u_id WHERE p.u_id IN (SELECT u_id FROM Friends WHERE f_id={0}) OR p.u_id IN (SELECT f_id FROM Friends WHERE u_id={0}) OR p.u_id={0} ORDER BY p.creation_time DESC;'.format(user['id']))
     return render_template('stream.html', title='Stream', username=username, form=form, posts=posts)
 
 # comment page for a given post and user.
-@app.route('/comments/<username>/<int:p_id>', methods=['GET', 'POST'])
-def comments(username, p_id):
+@app.route('/comments', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
+@login_required
+def comments():
+    username = current_user.username
+    p_id = int(current_user.id)
     form = CommentsForm()
     if form.is_submitted():
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
@@ -58,8 +115,11 @@ def comments(username, p_id):
     return render_template('comments.html', title='Comments', username=username, form=form, post=post, comments=all_comments)
 
 # page for seeing and adding friends
-@app.route('/friends/<username>', methods=['GET', 'POST'])
-def friends(username):
+@app.route('/friends', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
+@login_required
+def friends():
+    username = current_user.username
     form = FriendsForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
@@ -70,11 +130,14 @@ def friends(username):
             query_db('INSERT INTO Friends (u_id, f_id) VALUES({}, {});'.format(user['id'], friend['id']))
     
     all_friends = query_db('SELECT * FROM Friends AS f JOIN Users as u ON f.f_id=u.id WHERE f.u_id={} AND f.f_id!={} ;'.format(user['id'], user['id']))
-    return render_template('friends.html', title='Friends', username=username, friends=all_friends, form=form)
+    return render_template('friends.html', title="friends", username=username, friends=all_friends, form=form)
 
 # see and edit detailed profile information of a user
-@app.route('/profile/<username>', methods=['GET', 'POST'])
-def profile(username):
+@app.route('/profile', methods=['GET', 'POST'])
+@limiter.limit("1000/hour")
+@login_required
+def profile():
+    username = current_user.username
     form = ProfileForm()
     if form.is_submitted():
         query_db('UPDATE Users SET education="{}", employment="{}", music="{}", movie="{}", nationality="{}", birthday=\'{}\' WHERE username="{}" ;'.format(
@@ -84,3 +147,18 @@ def profile(username):
     
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for("index"))
+
+@app.errorhandler(401)
+def unathorized(e):
+    flash("Unathorized", category="error")
+    return redirect(url_for("index"))
+
+@app.errorhandler(Exception)
+def feil(e):
+    flash("Something went wrong", category="error")
+    return redirect(url_for("index"))
