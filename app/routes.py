@@ -185,6 +185,20 @@ def profile():
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
 
+@app.route('/profile/<username>', methods=['GET'])
+@limiter.limit("1000/hour")
+@login_required
+def profile_friend(username):
+    form = ProfileForm()
+    #if form.is_submitted():
+    #    query_db('UPDATE Users SET education="{}", employment="{}", music="{}", movie="{}", nationality="{}", birthday=\'{}\' WHERE username="{}" ;'.format(
+    #        form.education.data, form.employment.data, form.music.data, form.movie.data, form.nationality.data, form.birthday.data, username
+    #    ))
+    #    return redirect(url_for('friendprofile'))
+    
+    user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+    return render_template('friendprofile.html', title='profile', username=username, user=user, form=form)
+
 @app.route("/logout")
 def logout():
     logout_user()
@@ -195,7 +209,7 @@ def unathorized(e):
     flash("Unathorized", category="error")
     return redirect(url_for("index"))
 
-#@app.errorhandler(Exception)
-#def feil(e):
-#    flash("Something went wrong", category="error")
-#    return redirect(url_for("index"))
+@app.errorhandler(Exception)
+def feil(e):
+    flash("Something went wrong", category="error")
+    return redirect(url_for("index"))
