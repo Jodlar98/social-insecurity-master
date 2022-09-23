@@ -1,10 +1,15 @@
 import imp
 from numbers import Real
-from flask import render_template, flash, redirect, url_for, request
-from app import app, query_db
+from pickle import FALSE, TRUE
+from turtle import st
+from flask import render_template, flash, redirect, url_for, request, session
+from app import app, query_db, get_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
 import os
+import re
+from passlib.hash import argon2
+
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
@@ -54,6 +59,19 @@ def load_user(user_id):
         return None
     else:
         return User(user_id, user[1])
+#========================================
+# NB: For å kjøre siden med HTTPS
+# Må du kjøre denne koden i terminalen:
+#
+# 'flask run --cert=adhoc'
+#
+# Dersom du bruker chrome Kjør koden under
+# i URL-feltet og trykk "tillat":
+#
+# 'chrome://flags/#allow-insecure-localhost'
+#========================================
+
+
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
@@ -63,19 +81,38 @@ def index():
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:
-            flash('Sorry, wrong username or password!')
-        elif user['password'] == form.login.password.data:
+            flash('Sorry, wrong password or username!')
+        elif argon2.verify(form.login.password.data, user['password']): # Returnerer true hvis user input kan "dekryptere" hashet passord. 
             usr = load_user(user["id"])
             login_user(usr, remember=form.login.remember_me.data)
             return redirect(url_for('stream'))
         else:
-            flash('Sorry, wrong username or password!')
+            flash('Sorry, wrong password or username!')
+#------------------------
+# Lagt til ekstra sjekk 
+# for registrering av 
+# bruker 14.09.2022 Simon 
+# (og Matias).
+#
+# Bruker argon2 kryptering av passord (Matias)
+#----------------------------------------------------------------
+    elif form.register.validate_on_submit():
+        if form.register.check_user(form.register.username.data):
+            if form.register.pwcheck(form.register.password.data):
+                query_db('INSERT INTO Users (username, first_name, last_name, password) VALUES("{}", "{}", "{}", "{}");'.format(form.register.username.data, form.register.first_name.data,
+                form.register.last_name.data, argon2.hash(form.register.password.data)))
+                flash("User was successfully created.")
+                return redirect(url_for('index'))
 
-    elif form.register.is_submitted() and form.register.submit.data:
-        query_db('INSERT INTO Users (username, first_name, last_name, password) VALUES("{}", "{}", "{}", "{}");'.format(form.register.username.data, form.register.first_name.data,
-         form.register.last_name.data, form.register.password.data))
-        return redirect(url_for('index'))
+            elif not form.register.pwcheck(form.register.password.data):
+                flash("Password not stronk. Trenger minst en stor og liten bokstav og ett tall.")
+
+        elif form.register.check_user(form.register.username.data) == False:
+            flash("That user already exist!")
+
     return render_template('index.html', title='Welcome', form=form)
+#----------------------------------------------------------------
+
 
 
 # content stream page

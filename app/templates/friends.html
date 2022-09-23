@@ -22,7 +22,9 @@
                     <h1 class="card-text">Your friends</h1>
                     <ul class="list-group list-group-flush">
                         {% for friend in friends %}
-                        <li class="list-group-item"><a href={{url_for('profile', username=friend.username)}}>{{friend.username}}</a></li>
+                        <li class="list-group-item"><a>{{friend.username}}</a>
+                        <!-- href={{url_for('profile', username=friend.username)}} // Legges tilbake inni <a> om man skal få tilbake link-funksjonen -->
+                        </li>
                         {% endfor %}
                     </ul>
                 </div>

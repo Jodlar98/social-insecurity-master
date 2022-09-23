@@ -4,7 +4,8 @@ from flask_bootstrap import Bootstrap
 from flask_login import LoginManager, UserMixin
 import sqlite3
 import os
-
+from datetime import datetime
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 # create and configure app
 app = Flask(__name__)
 Bootstrap(app)
@@ -19,7 +20,7 @@ def get_db():
     if db is None:
         db = g._database = sqlite3.connect(app.config['DATABASE'])
     db.row_factory = sqlite3.Row
-    return db
+    return db 
 
 # initialize db for the first time
 def init_db():
