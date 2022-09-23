@@ -1,4 +1,3 @@
-#from crypt import methods
 import imp
 from numbers import Real
 from flask import render_template, flash, redirect, url_for, request
@@ -20,7 +19,6 @@ def allowed_file(filename):
 
 # User class
 class User(UserMixin):
-    #id = query_db('SELECT * FROM Users WHERE username="{}";'.format(db.login.username.data), one=True)
     def __init__(self, id, username) -> None:
         self.id = id
         self.username = username
@@ -62,8 +60,6 @@ def load_user(user_id):
 @limiter.limit("100/hour", error_message='Stopp, ikkje hack!')
 def index():
     form = IndexForm()
-    #login_form = LoginForm()
-    #register_form = RegisterForm()
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:

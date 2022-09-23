@@ -12,7 +12,6 @@ app.config.from_object(Config)
 login = LoginManager(app)
 login.login_view = "login"
 # TODO: Handle login management better, maybe with flask_login?
-#login = LoginManager(app)
 
 # get an instance of the db
 def get_db():
