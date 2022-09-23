@@ -1,19 +1,23 @@
+#from crypt import methods
+import imp
 from flask import render_template, flash, redirect, url_for, request
-from app import app, query_db, db
+from app import app, query_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
 import os
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin
-
+from app import login
 limiter = Limiter(app, key_func=get_remote_address)
 # this file contains all the different routes, and the logic for communicating with the database
 
 # User class
-class User():
-    id = query_db('SELECT * FROM Users WHERE username="{}";'.format(db.login.username.data), one=True)
-
+class User(UserMixin):
+    #id = query_db('SELECT * FROM Users WHERE username="{}";'.format(db.login.username.data), one=True)
+    def __init__(self, id, username) -> None:
+        self.id = id
+        self.username = username
     @property
     def is_active(self):
         return True
@@ -34,13 +38,18 @@ class User():
 
 ###
 
+
+
 login = LoginManager()
 login.init_app(app)
 
 @login.user_loader
 def load_user(user_id):
-    return query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id.id.data), one=True)
-
+    user =  query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id), one=True)
+    if user is None:
+        return None
+    else:
+        return User(user_id, user[1])
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
@@ -54,10 +63,8 @@ def index():
         if user == None:
             flash('Sorry, this user does not exist!')
         elif user['password'] == form.login.password.data:
-            print(user)
-            user = User()
-            login_user(user)
-            print(user)
+            usr = load_user(user["id"])
+            login_user(usr, remember=form.login.remember_me.data)
             return redirect(url_for('stream', username=form.login.username.data))
         else:
             flash('Sorry, wrong password!')
@@ -72,6 +79,7 @@ def index():
 # content stream page
 @app.route('/stream/<username>', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
+@login_required
 def stream(username):
     form = PostForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
@@ -90,6 +98,7 @@ def stream(username):
 # comment page for a given post and user.
 @app.route('/comments/<username>/<int:p_id>', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
+@login_required
 def comments(username, p_id):
     form = CommentsForm()
     if form.is_submitted():
@@ -103,6 +112,7 @@ def comments(username, p_id):
 # page for seeing and adding friends
 @app.route('/friends/<username>', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
+@login_required
 def friends(username):
     form = FriendsForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
@@ -119,6 +129,7 @@ def friends(username):
 # see and edit detailed profile information of a user
 @app.route('/profile/<username>', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
+@login_required
 def profile(username):
     form = ProfileForm()
     if form.is_submitted():
@@ -129,3 +140,8 @@ def profile(username):
     
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    return redirect(url_for("index"))

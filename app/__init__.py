@@ -1,7 +1,7 @@
 from flask import Flask, g
 from config import Config
 from flask_bootstrap import Bootstrap
-#from flask_login import LoginManager
+from flask_login import LoginManager, UserMixin
 import sqlite3
 import os
 
@@ -9,7 +9,8 @@ import os
 app = Flask(__name__)
 Bootstrap(app)
 app.config.from_object(Config)
-
+login = LoginManager(app)
+login.login_view = "login"
 # TODO: Handle login management better, maybe with flask_login?
 #login = LoginManager(app)
 
@@ -53,5 +54,7 @@ if not os.path.exists(app.config['DATABASE']):
 
 if not os.path.exists(app.config['UPLOAD_PATH']):
     os.mkdir(app.config['UPLOAD_PATH'])
+
+
 
 from app import routes
