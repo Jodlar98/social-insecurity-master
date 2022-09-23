@@ -1,5 +1,6 @@
 #from crypt import methods
 import imp
+from numbers import Real
 from flask import render_template, flash, redirect, url_for, request
 from app import app, query_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
@@ -10,7 +11,12 @@ from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin
 from app import login
 limiter = Limiter(app, key_func=get_remote_address)
+
+
 # this file contains all the different routes, and the logic for communicating with the database
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'} # Might use this at some point, probably don't want people to upload any file type
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # User class
 class User(UserMixin):
@@ -84,14 +90,14 @@ def stream(username):
     form = PostForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
-        if form.image.data:
+        if allowed_file(form.image.data.filename):
             path = os.path.join(app.config['UPLOAD_PATH'], form.image.data.filename)
             form.image.data.save(path)
-
-
-        query_db('INSERT INTO Posts (u_id, content, image, creation_time) VALUES({}, "{}", "{}", \'{}\');'.format(user['id'], form.content.data, form.image.data.filename, datetime.now()))
-        return redirect(url_for('stream', username=username))
-
+            query_db('INSERT INTO Posts (u_id, content, image, creation_time) VALUES({}, "{}", "{}", \'{}\');'.format(user['id'], form.content.data, form.image.data.filename, datetime.now()))
+            return redirect(url_for('stream', username=username))
+        else:
+            
+            flash('This file format is not accepted, png, jpg and jpeg is gooood')
     posts = query_db('SELECT p.*, u.*, (SELECT COUNT(*) FROM Comments WHERE p_id=p.id) AS cc FROM Posts AS p JOIN Users AS u ON u.id=p.u_id WHERE p.u_id IN (SELECT u_id FROM Friends WHERE f_id={0}) OR p.u_id IN (SELECT f_id FROM Friends WHERE u_id={0}) OR p.u_id={0} ORDER BY p.creation_time DESC;'.format(user['id']))
     return render_template('stream.html', title='Stream', username=username, form=form, posts=posts)
 
