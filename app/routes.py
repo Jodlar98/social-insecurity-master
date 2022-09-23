@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin
+from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
 from app import login
 limiter = Limiter(app, key_func=get_remote_address)
 
@@ -71,7 +71,7 @@ def index():
         elif user['password'] == form.login.password.data:
             usr = load_user(user["id"])
             login_user(usr, remember=form.login.remember_me.data)
-            return redirect(url_for('stream', username=form.login.username.data))
+            return redirect(url_for('stream'))
         else:
             flash('Sorry, wrong password!')
 
@@ -83,10 +83,11 @@ def index():
 
 
 # content stream page
-@app.route('/stream/<username>', methods=['GET', 'POST'])
+@app.route('/stream', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
 @login_required
-def stream(username):
+def stream():
+    username = current_user.username
     form = PostForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
@@ -102,10 +103,12 @@ def stream(username):
     return render_template('stream.html', title='Stream', username=username, form=form, posts=posts)
 
 # comment page for a given post and user.
-@app.route('/comments/<username>/<int:p_id>', methods=['GET', 'POST'])
+@app.route('/comments', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
 @login_required
-def comments(username, p_id):
+def comments():
+    username = current_user.username
+    p_id = int(current_user.id)
     form = CommentsForm()
     if form.is_submitted():
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
@@ -116,10 +119,11 @@ def comments(username, p_id):
     return render_template('comments.html', title='Comments', username=username, form=form, post=post, comments=all_comments)
 
 # page for seeing and adding friends
-@app.route('/friends/<username>', methods=['GET', 'POST'])
+@app.route('/friends', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
 @login_required
-def friends(username):
+def friends():
+    username = current_user.username
     form = FriendsForm()
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
@@ -130,13 +134,14 @@ def friends(username):
             query_db('INSERT INTO Friends (u_id, f_id) VALUES({}, {});'.format(user['id'], friend['id']))
     
     all_friends = query_db('SELECT * FROM Friends AS f JOIN Users as u ON f.f_id=u.id WHERE f.u_id={} AND f.f_id!={} ;'.format(user['id'], user['id']))
-    return render_template('friends.html', title='Friends', username=username, friends=all_friends, form=form)
+    return render_template('friends.html', title="friends", username=username, friends=all_friends, form=form)
 
 # see and edit detailed profile information of a user
-@app.route('/profile/<username>', methods=['GET', 'POST'])
+@app.route('/profile', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
 @login_required
-def profile(username):
+def profile():
+    username = current_user.username
     form = ProfileForm()
     if form.is_submitted():
         query_db('UPDATE Users SET education="{}", employment="{}", music="{}", movie="{}", nationality="{}", birthday=\'{}\' WHERE username="{}" ;'.format(
@@ -150,4 +155,14 @@ def profile(username):
 @app.route("/logout")
 def logout():
     logout_user()
+    return redirect(url_for("index"))
+
+@app.errorhandler(401)
+def unathorized(e):
+    flash("Unathorized", category="error")
+    return redirect(url_for("index"))
+
+@app.errorhandler(Exception)
+def feil(e):
+    flash("Something went wrong", category="error")
     return redirect(url_for("index"))
