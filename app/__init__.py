@@ -6,30 +6,11 @@ import sqlite3
 import os
 from datetime import datetime
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_sqlalchemy import SQLAlchemy
 # create and configure app
 app = Flask(__name__)
 Bootstrap(app)
 app.config.from_object(Config)
 app.config['SECRET_KEY'] = 'X^&vXT2GT2ec$kutpRB7'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
-
-database = SQLAlchemy(app)
-
-class Users(database.Model):
-    id = database.Column(database.Integer, primary_key=True)
-    username = database.Column(database.String(30), nullable=False, unique=True)
-    password = database.Column(database.String(30), nullable=False)
-    first_name = database.Column(database.String(30), nullable=False)
-    last_name = database.Column(database.String(30), nullable=False)
-    date_added = database.Column(database.DateTime, default=datetime.utcnow)
-    authenticated = False
-
-    def __repr__(self):
-        return '<name %r>' % self.first_name
-
-login_manager = LoginManager()
-login_manager.init_app(app)
 
 # TODO: Handle login management better, maybe with flask_login?
 #login = LoginManager(app)
@@ -77,4 +58,3 @@ if not os.path.exists(app.config['UPLOAD_PATH']):
 
 from app import forms
 from app import routes
-from app import funcs_n_classes

@@ -1,15 +1,13 @@
 from pickle import FALSE, TRUE
 from turtle import st
 from flask import render_template, flash, redirect, url_for, request, session
-from app import app, query_db, get_db, database
+from app import app, query_db, get_db
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
-from app.funcs_n_classes import check_user, pwcheck
 import os
 import re
 from passlib.hash import argon2
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask_sqlalchemy import SQLAlchemy
+
 
 # this file contains all the different routes, and the logic for communicating with the database
 
@@ -25,64 +23,20 @@ from flask_sqlalchemy import SQLAlchemy
 # 'chrome://flags/#allow-insecure-localhost'
 #========================================
 
-#class User(UserMixin):
-
-    #def __init__(self):
-        #form = IndexForm()
-        #db = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
-        #self.username = db['username']
-        #self.id = db['id']
-        #self.password = db['password']
-        #self.name = db['first_name']
-        #self.last_name = db['last_name']
-        #self.authenticated = False
-
-    #def is_authenticated(self):
-        #return self.authenticated
-
-    #def is_active(self):
-        #return self.is_active()
-
-    #def is_anonymous(self):
-        #return False
-
-    #def is_active(self):
-        #return True
-
-    #def get_id(self):
-        #if self.id != None:
-            #return self.id
-        #else:
-            #return None
-
-@app.login_manager.user_loader
-def load_user(user_id):
-    return User.get_id
-
 
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
 def index():
     form = IndexForm()
-    print("test outside")
-    flash(User.get_id)
     if form.login.is_submitted() and form.login.submit.data:
         user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
         if user == None:
             flash('Sorry, wrong password or username!')
         elif argon2.verify(form.login.password.data, user['password']): # Returnerer true hvis user input kan "dekryptere" hashet passord. 
-            login_user(user)
             return redirect(url_for('stream', username=form.login.username.data))
-
         else:
-
             flash('Sorry, wrong password or username!')
-
-    elif form.register.is_submitted() and form.register.submit.data:
-
-
-
 #------------------------
 # Lagt til ekstra sjekk 
 # for registrering av 
@@ -91,20 +45,19 @@ def index():
 #
 # Bruker argon2 kryptering av passord (Matias)
 #----------------------------------------------------------------
-        if pwcheck(form.register.password.data) == 0 and check_user(form.register.username.data) == TRUE:
-            if form.register.confirm_password.data == form.register.password.data:
+    elif form.register.validate_on_submit():
+        if form.register.check_user(form.register.username.data):
+            if form.register.pwcheck(form.register.password.data):
                 query_db('INSERT INTO Users (username, first_name, last_name, password) VALUES("{}", "{}", "{}", "{}");'.format(form.register.username.data, form.register.first_name.data,
                 form.register.last_name.data, argon2.hash(form.register.password.data)))
+                flash("User was successfully created.")
                 return redirect(url_for('index'))
 
-        elif(pwcheck(form.register.password.data) != 0):
-            flash('Password must be at least 6 characters long and contain Uppercase letter, a number or a special character')
+            elif not form.register.pwcheck(form.register.password.data):
+                flash("Password not stronk. Trenger minst en stor og liten bokstav og ett tall.")
 
-        elif(check_user(form.register.username.data) == FALSE):
-            flash('Username already exists.')
-
-        if(form.register.confirm_password.data != form.register.password.data):
-            flash('Passwords are not equal.')
+        elif form.register.check_user(form.register.username.data) == False:
+            flash("That user already exist!")
 
     return render_template('index.html', title='Welcome', form=form)
 #----------------------------------------------------------------
@@ -113,21 +66,26 @@ def index():
 
 # content stream page
 @app.route('/stream/<username>', methods=['GET', 'POST'])
-#@login_required
 def stream(username):
-    form = PostForm()
-    user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
-    if form.is_submitted():
-        if form.image.data:
-            path = os.path.join(app.config['UPLOAD_PATH'], form.image.data.filename)
-            form.image.data.save(path)
+    form = IndexForm()
+    if query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True) != None:
+        user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+        if argon2.verify(form.login.password.data, user['password']):
+            form = PostForm
+            if form.is_submitted():
+                if form.image.data:
+                    path = os.path.join(app.config['UPLOAD_PATH'], form.image.data.filename)
+                    form.image.data.save(path)
 
 
-        query_db('INSERT INTO Posts (u_id, content, image, creation_time) VALUES({}, "{}", "{}", \'{}\');'.format(user['id'], form.content.data, form.image.data.filename, datetime.now()))
-        return redirect(url_for('stream', username=username))
+                query_db('INSERT INTO Posts (u_id, content, image, creation_time) VALUES({}, "{}", "{}", \'{}\');'.format(user['id'], form.content.data, form.image.data.filename, datetime.now()))
+                return redirect(url_for('stream', username=username))
 
-    posts = query_db('SELECT p.*, u.*, (SELECT COUNT(*) FROM Comments WHERE p_id=p.id) AS cc FROM Posts AS p JOIN Users AS u ON u.id=p.u_id WHERE p.u_id IN (SELECT u_id FROM Friends WHERE f_id={0}) OR p.u_id IN (SELECT f_id FROM Friends WHERE u_id={0}) OR p.u_id={0} ORDER BY p.creation_time DESC;'.format(user['id']))
-    return render_template('stream.html', title='Stream', username=username, form=form, posts=posts)
+            posts = query_db('SELECT p.*, u.*, (SELECT COUNT(*) FROM Comments WHERE p_id=p.id) AS cc FROM Posts AS p JOIN Users AS u ON u.id=p.u_id WHERE p.u_id IN (SELECT u_id FROM Friends WHERE f_id={0}) OR p.u_id IN (SELECT f_id FROM Friends WHERE u_id={0}) OR p.u_id={0} ORDER BY p.creation_time DESC;'.format(user['id']))
+            return render_template('stream.html', title='Stream', username=username, form=form, posts=posts)
+
+        return render_template('index.html', title='Welcome', form=form)
+    return render_template('index.html', title='Welcome', form=form)
 
 # comment page for a given post and user.
 @app.route('/comments/<username>/<int:p_id>', methods=['GET', 'POST'])
@@ -175,6 +133,10 @@ def profile(username):
 #--------------------------------
 @app.errorhandler(404)
 def page_not_found(e):
-    return redirect(url_for('index'))
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def page_not_found(e):
+    return render_template('500.html'), 500
     
     
