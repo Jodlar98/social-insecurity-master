@@ -180,7 +180,7 @@ def profile():
         query_db('UPDATE Users SET education="{}", employment="{}", music="{}", movie="{}", nationality="{}", birthday=\'{}\' WHERE username="{}" ;'.format(
             form.education.data, form.employment.data, form.music.data, form.movie.data, form.nationality.data, form.birthday.data, username
         ))
-        return redirect(url_for('profile', username=username))
+        return redirect(url_for('profile'))
     
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
@@ -195,7 +195,7 @@ def unathorized(e):
     flash("Unathorized", category="error")
     return redirect(url_for("index"))
 
-@app.errorhandler(Exception)
-def feil(e):
-    flash("Something went wrong", category="error")
-    return redirect(url_for("index"))
+#@app.errorhandler(Exception)
+#def feil(e):
+#    flash("Something went wrong", category="error")
+#    return redirect(url_for("index"))
