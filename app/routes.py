@@ -3,13 +3,12 @@ from numbers import Real
 from pickle import FALSE, TRUE
 from turtle import st
 from flask import render_template, flash, redirect, url_for, request, session
-from app import app, query_db, get_db
+from app import app, query_db, get_db, register_user, select_user, add_comment, add_post, find_post, get_all_comments, update_profile, insert_friends
 from app.forms import IndexForm, PostForm, FriendsForm, ProfileForm, CommentsForm
 from datetime import datetime
 import os
 import re
 from passlib.hash import argon2
-
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, login_user, logout_user, login_required, UserMixin, current_user
@@ -79,7 +78,7 @@ def load_user(user_id):
 def index():
     form = IndexForm()
     if form.login.is_submitted() and form.login.submit.data:
-        user = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.login.username.data), one=True)
+        user = select_user(get_db(), form.login.username.data)
         if user == None:
             flash('Sorry, wrong password or username!')
         elif argon2.verify(form.login.password.data, user['password']): # Returnerer true hvis user input kan "dekryptere" hashet passord. 
@@ -99,8 +98,8 @@ def index():
     elif form.register.validate_on_submit():
         if form.register.check_user(form.register.username.data):
             if form.register.pwcheck(form.register.password.data):
-                query_db('INSERT INTO Users (username, first_name, last_name, password) VALUES("{}", "{}", "{}", "{}");'.format(form.register.username.data, form.register.first_name.data,
-                form.register.last_name.data, argon2.hash(form.register.password.data)))
+                register_user(get_db(), form.register.username.data, form.register.first_name.data,
+                form.register.last_name.data, argon2.hash(form.register.password.data))
                 flash("User was successfully created.")
                 return redirect(url_for('index'))
 
@@ -122,7 +121,7 @@ def index():
 def stream():
     username = current_user.username
     form = PostForm()
-    user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+    user = select_user(get_db(), username)#query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
         if allowed_file(form.image.data.filename):
             path = os.path.join(app.config['UPLOAD_PATH'], form.image.data.filename)
@@ -144,10 +143,10 @@ def comments():
     p_id = int(current_user.id)
     form = CommentsForm()
     if form.is_submitted():
-        user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
-        query_db('INSERT INTO Comments (p_id, u_id, comment, creation_time) VALUES({}, {}, "{}", \'{}\');'.format(p_id, user['id'], form.comment.data, datetime.now()))
+        user = select_user(get_db(), username)#query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+        add_comment(get_db(), p_id, user["id"], form.comment.data, datetime.now())# query_db('INSERT INTO Comments (p_id, u_id, comment, creation_time) VALUES({}, {}, "{}", \'{}\');'.format(p_id, user['id'], form.comment.data, datetime.now()))
 
-    post = query_db('SELECT * FROM Posts WHERE id={};'.format(p_id), one=True)
+    post = find_post(get_db(), p_id)#query_db('SELECT * FROM Posts WHERE id={};'.format(p_id), one=True)
     all_comments = query_db('SELECT DISTINCT * FROM Comments AS c JOIN Users AS u ON c.u_id=u.id WHERE c.p_id={} ORDER BY c.creation_time DESC;'.format(p_id))
     return render_template('comments.html', title='Comments', username=username, form=form, post=post, comments=all_comments)
 
@@ -158,13 +157,13 @@ def comments():
 def friends():
     username = current_user.username
     form = FriendsForm()
-    user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+    user = select_user(get_db(), username)
     if form.is_submitted():
         friend = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.username.data), one=True)
         if friend is None:
             flash('User does not exist')
         else:
-            query_db('INSERT INTO Friends (u_id, f_id) VALUES({}, {});'.format(user['id'], friend['id']))
+            insert_friends(get_db(), user["id"], friend["id"])#query_db('INSERT INTO Friends (u_id, f_id) VALUES({}, {});'.format(user['id'], friend['id']))
     
     all_friends = query_db('SELECT * FROM Friends AS f JOIN Users as u ON f.f_id=u.id WHERE f.u_id={} AND f.f_id!={} ;'.format(user['id'], user['id']))
     return render_template('friends.html', title="friends", username=username, friends=all_friends, form=form)
@@ -182,7 +181,7 @@ def profile():
         ))
         return redirect(url_for('profile'))
     
-    user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+    user = select_user(get_db(), username)
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
 
 @app.route('/profile/<username>', methods=['GET', 'POST'])
@@ -196,7 +195,7 @@ def profile_friend(username):
     #    ))
     #    return redirect(url_for('friendprofile'))
     
-    user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+    user = select_user(get_db(), username)
     return render_template('friendprofile.html', title='profile', username=username, user=user, form=form)
 
 @app.route("/logout")
@@ -209,7 +208,7 @@ def unathorized(e):
     flash("Unathorized", category="error")
     return redirect(url_for("index"))
 
-@app.errorhandler(Exception)
-def feil(e):
-    flash("Something went wrong", category="error")
-    return redirect(url_for("index"))
+#@app.errorhandler(Exception)
+#def feil(e):
+#    flash("Something went wrong", category="error")
+#    return redirect(url_for("index"))
