@@ -185,7 +185,7 @@ def profile():
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
 
-@app.route('/profile/<username>', methods=['GET'])
+@app.route('/profile/<username>', methods=['GET', 'POST'])
 @limiter.limit("1000/hour")
 @login_required
 def profile_friend(username):
