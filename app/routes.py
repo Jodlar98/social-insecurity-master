@@ -17,7 +17,7 @@ limiter = Limiter(app, key_func=get_remote_address)
 
 
 # this file contains all the different routes, and the logic for communicating with the database
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'} # Might use this at some point, probably don't want people to upload any file type
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'txt'} # Might use this at some point, probably don't want people to upload any file type
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
