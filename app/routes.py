@@ -53,7 +53,7 @@ login.init_app(app)
 
 @login.user_loader
 def load_user(user_id):
-    user =  select_user(get_db(), user_id)#query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id), one=True)
+    user =  query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id), one=True)#select_user(get_db(), user_id)
     if user is None:
         return None
     else:
@@ -83,6 +83,7 @@ def index():
             flash('Sorry, wrong password or username!')
         elif argon2.verify(form.login.password.data, user['password']): # Returnerer true hvis user input kan "dekryptere" hashet passord. 
             usr = load_user(user["id"])
+            print(usr)
             login_user(usr, remember=form.login.remember_me.data)
             return redirect(url_for('stream'))
         else:
