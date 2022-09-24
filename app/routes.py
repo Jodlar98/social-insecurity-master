@@ -107,7 +107,7 @@ def index():
                 flash("Password not stronk. Trenger minst en stor og liten bokstav og ett tall.")
 
         elif form.register.check_user(form.register.username.data) == False:
-            flash("That user already exist!")
+            flash("That brukernavn is ugyldig.")
 
     return render_template('index.html', title='Welcome', form=form)
 #----------------------------------------------------------------
