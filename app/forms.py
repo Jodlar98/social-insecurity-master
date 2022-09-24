@@ -4,7 +4,7 @@ from wtforms import StringField, PasswordField, BooleanField, SubmitField, FormF
 from wtforms.fields.html5 import DateField
 from wtforms.validators import DataRequired, Length, EqualTo #Importert funksjon for validering 14.09.2022 -Simon
 from flask import Flask, render_template
-from app import query_db
+from app import query_db, select_user, get_db
 
 
 # defines all forms in the application, these will be instantiated by the template,
@@ -28,12 +28,12 @@ class RegisterForm(FlaskForm):
     first_name = StringField('First Name', validators=[DataRequired()], render_kw={'placeholder': 'First Name'})
     last_name = StringField('Last Name', validators=[DataRequired()], render_kw={'placeholder': 'Last Name'})
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)], render_kw={'placeholder': 'Username'})
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=8, max=30, message='Passordet må være mellom 8 og 30 karakterer.')], render_kw={'placeholder': 'Password'})
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=8, max=30, message='Passordet må være mellom 8 og 30 karakterer og inneholde minst en stor bokstav og et tall.')], render_kw={'placeholder': 'Password'})
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')], render_kw={'placeholder': 'Confirm Password'})
     submit = SubmitField('Sign Up')
 
     def check_user(self, username):
-        usr = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+        usr = select_user(get_db(), username) #query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
         if usr == None:
             return True
         else:
