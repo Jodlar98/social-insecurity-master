@@ -53,7 +53,7 @@ login.init_app(app)
 
 @login.user_loader
 def load_user(user_id):
-    user =  query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id), one=True)
+    user =  select_user(get_db(), user_id)#query_db('SELECT * FROM Users WHERE id="{}";'.format(user_id), one=True)
     if user is None:
         return None
     else:
