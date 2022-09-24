@@ -17,7 +17,7 @@ limiter = Limiter(app, key_func=get_remote_address)
 
 
 # this file contains all the different routes, and the logic for communicating with the database
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'txt'} # Might use this at some point, probably don't want people to upload any file type
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'} # Might use this at some point, probably don't want people to upload any file type
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -124,14 +124,18 @@ def stream():
     form = PostForm()
     user = select_user(get_db(), username)#query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
-        if allowed_file(form.image.data.filename):
+        print(allowed_file(form.image.data))
+        if allowed_file(form.image.data):
             path = os.path.join(app.config['UPLOAD_PATH'], form.image.data.filename)
             form.image.data.save(path)
             query_db('INSERT INTO Posts (u_id, content, image, creation_time) VALUES({}, "{}", "{}", \'{}\');'.format(user['id'], form.content.data, form.image.data.filename, datetime.now()))
             return redirect(url_for('stream', username=username))
-        else:
             
+        elif form.content.data:
+            query_db('INSERT INTO Posts (u_id, content, creation_time) VALUES({}, "{}", \'{}\');'.format(user['id'], form.content.data, datetime.now()))
+        else:
             flash('This file format is not accepted, png, jpg and jpeg is gooood')
+            
     posts = query_db('SELECT p.*, u.*, (SELECT COUNT(*) FROM Comments WHERE p_id=p.id) AS cc FROM Posts AS p JOIN Users AS u ON u.id=p.u_id WHERE p.u_id IN (SELECT u_id FROM Friends WHERE f_id={0}) OR p.u_id IN (SELECT f_id FROM Friends WHERE u_id={0}) OR p.u_id={0} ORDER BY p.creation_time DESC;'.format(user['id']))
     return render_template('stream.html', title='Stream', username=username, form=form, posts=posts)
 
@@ -145,7 +149,8 @@ def comments():
     form = CommentsForm()
     if form.is_submitted():
         user = select_user(get_db(), username)#query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
-        add_comment(get_db(), p_id, user["id"], form.comment.data, datetime.now())# query_db('INSERT INTO Comments (p_id, u_id, comment, creation_time) VALUES({}, {}, "{}", \'{}\');'.format(p_id, user['id'], form.comment.data, datetime.now()))
+        #add_comment(get_db(), p_id, user["id"], form.comment.data, datetime.now())# 
+        query_db('INSERT INTO Comments (p_id, u_id, comment, creation_time) VALUES({}, {}, "{}", \'{}\');'.format(p_id, user['id'], form.comment.data, datetime.now()))
 
     post = find_post(get_db(), p_id)#query_db('SELECT * FROM Posts WHERE id={};'.format(p_id), one=True)
     all_comments = query_db('SELECT DISTINCT * FROM Comments AS c JOIN Users AS u ON c.u_id=u.id WHERE c.p_id={} ORDER BY c.creation_time DESC;'.format(p_id))
