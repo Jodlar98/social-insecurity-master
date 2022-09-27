@@ -15,6 +15,7 @@ from passlib.hash import argon2
 # NB: For å kjøre siden med HTTPS
 # Må du kjøre denne koden i terminalen:
 #
+#
 # 'flask run --cert=adhoc'
 #
 # Dersom du bruker chrome Kjør koden under
@@ -155,6 +156,7 @@ def comments(username, p_id):
 @app.route('/friends/<username>', methods=['GET', 'POST'])
 def friends(username):
     form = FriendsForm()
+    #accepted = query_db('INSERT INTO Friends (u_id, f_id, accepted) VALUES({}, {}, ,{});'.format(user['id'], friend['id']))
     user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
     if form.is_submitted():
         friend = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.username.data), one=True)
@@ -162,9 +164,19 @@ def friends(username):
             flash('User does not exist')
         else:
             query_db('INSERT INTO Friends (u_id, f_id) VALUES({}, {});'.format(user['id'], friend['id']))
+            #query_db('INSERT INTO Friends (u_id, f_id, accepted) VALUES({}, {}, {});'.format(user['id'], friend['id'],'0'))
+
     
     all_friends = query_db('SELECT * FROM Friends AS f JOIN Users as u ON f.f_id=u.id WHERE f.u_id={} AND f.f_id!={} ;'.format(user['id'], user['id']))
     return render_template('friends.html', title='Friends', username=username, friends=all_friends, form=form)
+#def accept(username):
+#    form = FriendsForm()
+#    user = query_db('SELECT * FROM Users WHERE username="{}";'.format(username), one=True)
+#    friend = query_db('SELECT * FROM Users WHERE username="{}";'.format(form.username.data), one=True)
+#
+#    if form.accept():
+#        query_db('INSERT INTO Friends (u_id, f_id, Accepted) VALUES({}, {}, {});'.format(user['id'], friend['id'], '1'))
+
 
 # see and edit detailed profile information of a user
 @app.route('/profile/<username>', methods=['GET', 'POST'])

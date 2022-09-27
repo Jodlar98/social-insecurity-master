@@ -46,6 +46,8 @@ class CommentsForm(FlaskForm):
 class FriendsForm(FlaskForm):
     username = StringField('Friend\'s username', render_kw={'placeholder': 'Username'})
     submit = SubmitField('Add Friend')
+    accept = SubmitField('Accept')
+    deny = SubmitField('Deny')
 
 class ProfileForm(FlaskForm):
     education = StringField('Education', render_kw={'placeholder': 'Highest education'})

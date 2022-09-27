@@ -19,6 +19,16 @@
         <div class="col-sm-12 col-lg-6">
             <div class="card">
                 <div class="card-body">
+                    <h1 class="card-text">Friend requests</h1>
+                    <ul class="list-group list-group-flush">
+                        {% for friend in friends %}
+                        <li class="list-group-item">
+                            <a>{{friend.username}}
+                                {{ wtf.form_field(form.accept, class="btn btn-primary")}}
+                                {{ wtf.form_field(form.deny, class="btn btn-primary")}}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
                     <h1 class="card-text">Your friends</h1>
                     <ul class="list-group list-group-flush">
                         {% for friend in friends %}

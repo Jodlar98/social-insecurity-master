@@ -53,6 +53,7 @@ DROP TABLE IF EXISTS [Friends];
 CREATE TABLE [Friends](
   u_id INTEGER NOT NULL REFERENCES Users,
   f_id INTEGER NOT NULL REFERENCES Users,
+  Accepted INTEGER DEFAULT 0,
   PRIMARY KEY(u_id, f_id),
   FOREIGN KEY (u_id) REFERENCES [Users](id),
   FOREIGN KEY (f_id) REFERENCES [Users](id)
