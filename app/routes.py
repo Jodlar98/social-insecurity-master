@@ -74,7 +74,7 @@ def load_user(user_id):
 # home page/login/registration
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/index', methods=['GET', 'POST'])
-#@limiter.limit("100/hour", error_message='Stopp, ikkje hack!')
+@limiter.limit("100/hour", error_message='Stopp, ikkje hack!')
 
 def index():
     form = IndexForm()
@@ -118,7 +118,7 @@ def index():
 
 # content stream page
 @app.route('/stream', methods=['GET', 'POST'])
-#@limiter.limit("1000/hour")
+@limiter.limit("1000/hour")
 @login_required
 
 def stream():
@@ -143,7 +143,7 @@ def stream():
 
 # comment page for a given post and user.
 @app.route('/comments', methods=['GET', 'POST'])
-#@limiter.limit("1000/hour")
+@limiter.limit("1000/hour")
 
 @login_required
 def comments():
@@ -161,7 +161,7 @@ def comments():
 
 # page for seeing and adding friends
 @app.route('/friends', methods=['GET', 'POST'])
-#@limiter.limit("1000/hour")
+@limiter.limit("1000/hour")
 
 @login_required
 def friends():
@@ -180,7 +180,7 @@ def friends():
 
 # see and edit detailed profile information of a user
 @app.route('/profile', methods=['GET', 'POST'])
-#@limiter.limit("1000/hour")
+@limiter.limit("1000/hour")
 
 @login_required
 def profile():
@@ -196,7 +196,7 @@ def profile():
     return render_template('profile.html', title='profile', username=username, user=user, form=form)
 
 @app.route('/profile/<username>', methods=['GET', 'POST'])
-#@limiter.limit("1000/hour")
+@limiter.limit("1000/hour")
 
 @login_required
 def profile_friend(username):
