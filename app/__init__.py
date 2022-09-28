@@ -15,6 +15,15 @@ login = LoginManager(app)
 login.login_view = "login"
 # TODO: Handle login management better, maybe with flask_login?
 
+@app.after_request
+def set_secure_headers(response):
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Content-Security-Policy'] = "default-src 'self'"
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    return response
+
+
 # get an instance of the db
 def get_db():
     db = getattr(g, '_database', None)

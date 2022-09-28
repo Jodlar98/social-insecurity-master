@@ -16,3 +16,4 @@ passlib==1.7.4
 pyOpenSSL==22.0.0
 argon2-cffi==21.3.0
 zxcvbn==4.4.28
+secure==0.3.0
